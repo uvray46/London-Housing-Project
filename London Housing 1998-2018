@@ -1,0 +1,47 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Load the Excel file
+file_path = 'C:/Users/jwhit/OneDrive/Documents/Data Science Course/UK House price index.xlsx'
+xl = pd.ExcelFile(file_path)
+
+# Load a specific sheet into a DataFrame
+df = xl.parse('Average price')
+
+# Convert 'Date' column to datetime and extract the year
+df.rename(columns={'Unnamed: 0': 'Date'}, inplace=True)
+df['Date'] = pd.to_datetime(df['Date'])
+df['Year'] = df['Date'].dt.year
+
+# Convert price columns to numeric
+numeric_cols = df.columns[1:]  # Exclude 'Date' and 'Year'
+df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+
+# Transform the DataFrame from wide to long format
+df_long = df.melt(id_vars=['Date', 'Year'], var_name='London Borough', value_name='Average Price')
+
+# Define the function to calculate price ratios
+def create_price_ratio(dfg):
+    price_1998 = dfg[dfg['Year'] == 1998]['Average Price'].mean()
+    price_2018 = dfg[dfg['Year'] == 2018]['Average Price'].mean()
+    ratio = price_1998 / price_2018
+    return ratio
+
+# Apply the function to each borough
+price_ratios = df_long[df_long['Year'].isin([1998, 2018])].groupby('London Borough').apply(create_price_ratio)
+price_ratios_sorted = price_ratios.sort_values(ascending=False)
+
+# Display the results
+print(price_ratios_sorted)
+
+# Plot the results
+plt.figure(figsize=(10, 6))
+price_ratios_sorted.plot(kind='bar')
+plt.title('Ratio of Average House Prices (1998 vs 2018)')
+plt.xlabel('London Borough')
+plt.ylabel('Price Ratio')
+plt.show()
+
+# Save cleaned data to a new Excel file
+cleaned_file_path = 'cleaned_data.xlsx'
+df_long.to_excel(cleaned_file_path, index=False)
